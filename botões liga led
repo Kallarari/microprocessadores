@@ -1,0 +1,54 @@
+/*
+ * 01_main_simple_blink.c
+ *
+ *  Created on: Feb 17, 2020
+ *      Author: Renan Augusto Starke
+ *      Instituto Federal de Santa Catarina
+ */
+
+#include <msp430.h>
+#include <stdint.h>
+#define BITS_H_
+#define SET(BIT) (1 << BIT)
+#define SET_BIT(Y,BIT) (Y |= (BIT))
+#define CLR_BIT(Y,BIT) (Y &= ~(BIT))
+#define CPL_BIT(Y,BIT) (Y ^= (BIT))
+#define TST_BIT(Y,BIT) (Y & (BIT))
+
+
+#define LED   BIT0
+#define DELAY 100000
+
+int main(void)
+{
+    /* Desabilita Watch dog */
+    WDTCTL = WDTPW | WDTHOLD;
+
+#if defined (__MSP430FR2355__)
+    /* Disable the GPIO power-on default high-impedance mode */
+    PM5CTL0 &= ~LOCKLPM5;
+#endif
+
+    P1DIR = LED;
+    P6DIR = BIT6;
+
+    P4REN |= BIT1;
+    P4OUT |= BIT1;
+
+    P2REN |= BIT3;
+    P2OUT |= BIT3;
+    while(1){
+
+        if (TST_BIT(P4IN, BIT1))
+            CLR_BIT(P1OUT, LED);
+        else
+            SET_BIT(P1OUT, LED);
+
+        if (TST_BIT(P2IN, BIT3))
+        CLR_BIT(P6OUT, BIT6);
+        else
+            SET_BIT(P6OUT, BIT6);
+           /*6LIGA A LED */
+    }
+    return 0;
+}
