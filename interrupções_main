@@ -1,0 +1,103 @@
+/*
+ * 03_main_ext_irq.c
+ *
+ *  Created on: Mar 12, 2020
+ *      Author: Renan Augusto Starke
+ *      Instituto Federal de Santa Catarina
+ */
+
+#include <msp430.h>
+
+#define LED   BIT0
+#define BUTTON_0  BIT1
+#define LED1   BIT6
+#define BUTTON_1  BIT3
+
+void config_ext_irq(){
+    /* Primeiramente configura porta:
+     *
+     * Cuidado quando há entrada e saídas
+     *
+     * Todos pinos como entrada  */
+    P4DIR = 0x00;
+
+    /* Pull up/down */
+    P4REN = BUTTON_0;
+
+    /* Pull up */
+    P4OUT = BUTTON_0;
+
+    /* Habilitação da IRQ apenas botão */
+    P4IE =  BUTTON_0;
+
+    /* Transição de nível alto para baixo */
+    P4IES = BUTTON_0;
+
+    /* Limpa alguma IRQ pendente */
+    P4IFG &= ~BUTTON_0;
+
+    /*c  *********outro botão ********* */
+
+    P2DIR = 0x00;
+
+    /* Pull up/down */
+    P2REN = BUTTON_1;
+
+    /* Pull up */
+    P2OUT = BUTTON_1;
+
+    /* Habilitação da IRQ apenas botão */
+    P2IE =  BUTTON_1;
+
+    /* Transição de nível alto para baixo */
+    P2IES = BUTTON_1;
+
+    /* Limpa alguma IRQ pendente */
+    P2IFG &= ~BUTTON_1;
+}
+
+void main(){
+    /* Configuração de hardware */
+    WDTCTL = WDTPW | WDTHOLD;
+
+#if defined (__MSP430FR2355__)
+    /* Disable the GPIO power-on default high-impedance mode */
+    PM5CTL0 &= ~LOCKLPM5;
+#endif
+
+    /* Configura port do LED */
+    P1DIR = LED;
+    P6DIR = LED1;
+
+
+    /* Configura interupções */
+    config_ext_irq();
+
+    /* Habilita IRQs e desliga CPU */
+    __bis_SR_register(LPM4_bits | GIE);
+
+}
+
+
+/* Port 4 ISR (interrupt service routine) */
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=PORT4_VECTOR
+__interrupt void Port_4(void) 
+{
+    /* Liga/desliga LED quando detectado borda no botão */
+    P1OUT ^= LED;
+
+    /* Limpa sinal de IRQ do botão 0 */
+    P4IFG &= ~BUTTON_0;
+}
+
+
+#pragma vector=PORT2_VECTOR
+__interrupt void Port_2(void)
+{
+    /* Liga/desliga LED quando detectado borda no botão */
+    P6OUT ^= LED1;
+
+    /* Limpa sinal de IRQ do botão 0 */
+    P2IFG &= ~BUTTON_1;
+}
