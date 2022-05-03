@@ -1,1 +1,8 @@
-arquivomicro
+anotação de como São ligados os fios do msp para o display 16x2
+ligue o E no p3.1 e o Rs no p3.0
+na parte inferior do display ligue ois 5v no 5v na placa e ao lado direito dos 5v está o gnd
+d7 - p6.3
+d6 - p6.2
+d5 - p6.1
+d4 - p6.0
+pronto... deve funcionar
