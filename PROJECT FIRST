@@ -1,0 +1,109 @@
+/*
+ * 02_main_lcd.c
+ *
+ *  Created on: Mar 2, 2020
+ *      Author: Renan Augusto Starke
+ *      Instituto Federal de Santa Catarina *
+ */
+
+
+#include <msp430.h>
+
+#include <stdio.h>
+
+#define BITS_H_
+#define SET(BIT) (1 << BIT)
+#define SET_BIT(Y,BIT) (Y |= (BIT))
+#define CLR_BIT(Y,BIT) (Y &= ~(BIT))
+#define CPL_BIT(Y,BIT) (Y ^= (BIT))
+#define TST_BIT(Y,BIT) (Y & (BIT))
+
+
+
+#define BUTTON_0  BIT1
+#define BUTTON_1  BIT3
+
+
+
+
+#include "lcd.h"
+
+   volatile uint8_t i = 0;
+
+   void config_ext_irq(){
+
+       P4DIR = 0x00;
+
+       /* Pull up/down */
+       P4REN = BUTTON_0;
+
+       /* Pull up */
+       P4OUT = BUTTON_0;
+
+       /* Habilitação da IRQ apenas botão */
+       P4IE =  BUTTON_0;
+
+       /* Transição de nível alto para baixo */
+       P4IES = BUTTON_0;
+
+       /* Limpa alguma IRQ pendente */
+       P4IFG &= ~BUTTON_0;
+
+   }
+void main(){
+    char string[8];
+
+    /* Configuração de hardware */
+    WDTCTL = WDTPW | WDTHOLD;
+
+    P2REN |= BIT3;
+    P2OUT |= BIT3;
+#if defined (__MSP430FR2355__)
+    /* Disable the GPIO power-on default high-impedance mode */
+    PM5CTL0 &= ~LOCKLPM5;
+#endif
+
+    /* Inicializa hardare: veja lcd.h para
+     * configurar pinos */
+    lcd_init_4bits();
+    /* Escreve string */
+
+    lcd_send_data(LCD_LINE_1+4, LCD_CMD);
+    lcd_write_string("Minosso");
+
+
+    while (1){
+        /* Configuração de hardware */
+        WDTCTL = WDTPW | WDTHOLD;
+
+        #if defined (__MSP430FR2355__)
+        /* Disable the GPIO power-on default high-impedance mode */
+        PM5CTL0 &= ~LOCKLPM5;
+        #endif
+        lcd_send_data(LCD_LINE_0, LCD_CMD);
+        snprintf(string, 8, "%d", i);
+
+        lcd_write_string(string);
+
+
+        config_ext_irq();
+
+
+        if (TST_BIT(P2IN, BIT3))
+            i=88;
+
+
+    }
+
+}
+
+    /* Port 4 ISR (interrupt service routine) */
+    #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+    #pragma vector=PORT4_VECTOR
+    __interrupt void Port_4(void){
+      i=44;
+
+      P4IFG &= ~BIT1;
+      }
+    #endif
+
