@@ -1,109 +1,104 @@
 /*
- * 02_main_lcd.c
+ * 03_main_ext_irq.c
  *
- *  Created on: Mar 2, 2020
+ *  Created on: Mar 12, 2020
  *      Author: Renan Augusto Starke
- *      Instituto Federal de Santa Catarina *
+ *      Instituto Federal de Santa Catarina
  */
-
 
 #include <msp430.h>
 
+#include "lcd.h"
 #include <stdio.h>
 
-#define BITS_H_
-#define SET(BIT) (1 << BIT)
-#define SET_BIT(Y,BIT) (Y |= (BIT))
-#define CLR_BIT(Y,BIT) (Y &= ~(BIT))
-#define CPL_BIT(Y,BIT) (Y ^= (BIT))
-#define TST_BIT(Y,BIT) (Y & (BIT))
-
-
-
+#define LED   BIT0
 #define BUTTON_0  BIT1
+#define LED1   BIT6
 #define BUTTON_1  BIT3
 
+void config_ext_irq(){
+    /* Primeiramente configura porta:
+     *
+     * Cuidado quando há entrada e saídas
+     *
+     * Todos pinos como entrada  */
+    P4DIR = 0x00;
 
+    /* Pull up/down */
+    P4REN = BUTTON_0;
 
+    /* Pull up */
+    P4OUT = BUTTON_0;
 
-#include "lcd.h"
+    /* Habilitação da IRQ apenas botão */
+    P4IE =  BUTTON_0;
 
-   volatile uint8_t i = 0;
+    /* Transição de nível alto para baixo */
+    P4IES = BUTTON_0;
 
-   void config_ext_irq(){
+    /* Limpa alguma IRQ pendente */
+    P4IFG &= ~BUTTON_0;
 
-       P4DIR = 0x00;
+    /*c  *********outro botão ********* */
 
-       /* Pull up/down */
-       P4REN = BUTTON_0;
+    P2DIR = 0x00;
 
-       /* Pull up */
-       P4OUT = BUTTON_0;
+    /* Pull up/down */
+    P2REN = BUTTON_1;
 
-       /* Habilitação da IRQ apenas botão */
-       P4IE =  BUTTON_0;
+    /* Pull up */
+    P2OUT = BUTTON_1;
 
-       /* Transição de nível alto para baixo */
-       P4IES = BUTTON_0;
+    /* Habilitação da IRQ apenas botão */
+    P2IE =  BUTTON_1;
 
-       /* Limpa alguma IRQ pendente */
-       P4IFG &= ~BUTTON_0;
+    /* Transição de nível alto para baixo */
+    P2IES = BUTTON_1;
 
-   }
+    /* Limpa alguma IRQ pendente */
+    P2IFG &= ~BUTTON_1;
+}
+
+volatile uint8_t i = 0;
 void main(){
     char string[8];
-
-    /* Configuração de hardware */
     WDTCTL = WDTPW | WDTHOLD;
-
-    P2REN |= BIT3;
-    P2OUT |= BIT3;
 #if defined (__MSP430FR2355__)
-    /* Disable the GPIO power-on default high-impedance mode */
     PM5CTL0 &= ~LOCKLPM5;
 #endif
-
-    /* Inicializa hardare: veja lcd.h para
-     * configurar pinos */
     lcd_init_4bits();
-    /* Escreve string */
-
     lcd_send_data(LCD_LINE_1+4, LCD_CMD);
     lcd_write_string("Minosso");
+    _delay_cycles(100000);
+
+
+    P1DIR = LED;
+    config_ext_irq();
+    __bis_SR_register(LPM4_bits | GIE);
 
 
     while (1){
-        /* Configuração de hardware */
-        WDTCTL = WDTPW | WDTHOLD;
-
-        #if defined (__MSP430FR2355__)
-        /* Disable the GPIO power-on default high-impedance mode */
-        PM5CTL0 &= ~LOCKLPM5;
-        #endif
         lcd_send_data(LCD_LINE_0, LCD_CMD);
         snprintf(string, 8, "%d", i);
 
         lcd_write_string(string);
+        i++;
 
-
-        config_ext_irq();
-
-
-        if (TST_BIT(P2IN, BIT3))
-            i=88;
-
-
+        _delay_cycles(100000);
     }
-
 }
 
-    /* Port 4 ISR (interrupt service routine) */
-    #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
-    #pragma vector=PORT4_VECTOR
-    __interrupt void Port_4(void){
-      i=44;
 
-      P4IFG &= ~BIT1;
-      }
-    #endif
+/* Port 4 ISR (interrupt service routine) */
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#endif
+
+#pragma vector=PORT4_VECTOR
+__interrupt void Port_4(void)
+{
+    P1OUT ^= LED;
+    P4IFG &= ~BUTTON_0;
+    i=0;
+}
+
 
