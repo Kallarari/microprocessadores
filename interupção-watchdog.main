@@ -1,0 +1,119 @@
+/*
+ * 05_main_simple_wd_timer.c
+ *
+ *  Created on: Mar 27, 2020
+ *      Author: Renan Augusto Starke
+ *      Instituto Federal de Santa Catarina
+ */
+
+
+#ifndef __MSP430FR2355__
+    #error "Clock system not supported for this device"
+#endif
+
+/* System includes */
+#include <msp430.h>
+
+/* Project includes */
+/*
+ * gpio.h : GPIO general purpose macros
+ *
+ *  Created on: Mar 2, 2020
+ *      Author: Renan Augusto Starke
+ *      Instituto Federal de Santa Catarina
+ */
+
+#ifndef LIB_GPIO_H_
+#define LIB_GPIO_H_
+
+/* Convert Px to PxOUT */
+#define PORT_OUT(...) PORT_OUT_SUB(__VA_ARGS__)
+#define PORT_OUT_SUB(port) (port##OUT)
+
+/* Convert Px to PxIN */
+#define PORT_IN(...) PORT_IN_SUB(__VA_ARGS__)
+#define PORT_IN_SUB(port) (port##IN)
+
+/* Convert Px to PxDIR */
+#define PORT_DIR(...) PORT_DIR_SUB(__VA_ARGS__)
+#define PORT_DIR_SUB(port) (port##DIR)
+
+/* Convert Px to PxREN */
+#define PORT_REN(...) PORT_REN_SUB(__VA_ARGS__)
+#define PORT_REN_SUB(port) (port##REN)
+
+/* Convert Px to PxIE */
+#define PORT_IE(...) PORT_IE_SUB(__VA_ARGS__)
+#define PORT_IE_SUB(port) (port##IE)
+
+/* Convert Px to PxIES */
+#define PORT_IES(...) PORT_IES_SUB(__VA_ARGS__)
+#define PORT_IES_SUB(port) (port##IES)
+
+/* Convert Px to PxIFG */
+#define PORT_IFG(...) PORT_IFG_SUB(__VA_ARGS__)
+#define PORT_IFG_SUB(port) (port##IFG)
+
+#endif /* LIB_GPIO_H_ */
+
+#define LED BIT0
+#define LED_PORT P1
+
+
+/**
+  * @brief  Configura temporizador watchdog.
+  *
+  * @param  none
+  *
+  * @retval none
+  */
+void config_wd_as_timer(){
+    /* Configura Watch dog como temporizador:
+     *
+     * WDT_ADLY_1000 <= (WDTPW+WDTTMSEL+WDTCNTCL+WDTIS2+WDTSSEL0)
+     *
+     * WDTPW -> "Senha" para alterar confgiuração.
+     * WDTTMSEL -> Temporizador ao invés de reset.
+     * WDTSSEL -> Fonte de clock de ACLK
+     * WDTIS2 -> Período de 1000ms com ACLK = 32.768Hz
+     *
+     */
+    WDTCTL = WDT_ADLY_1000;
+    /* Ativa IRQ do Watchdog */
+    SFRIE1 |= WDTIE;
+}
+
+
+int main(void)
+{
+    /* Desliga watchdog imediatamente */
+    WDTCTL = WDTPW | WDTHOLD;
+
+#if defined (__MSP430FR2355__)
+    /* Disable the GPIO power-on default high-impedance mode */
+    PM5CTL0 &= ~LOCKLPM5;
+#endif
+
+    /* Configurações de hardware */
+    config_wd_as_timer();
+
+    PORT_DIR(LED_PORT) = BIT0;
+
+    /* Entra em modo de economia de energia */
+    __bis_SR_register(LPM0_bits + GIE);
+
+}
+
+
+/* ISR do watchdog: executado toda a vez que o temporizador estoura */
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=WDT_VECTOR
+__interrupt void watchdog_timer(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
+#else
+#error Compiler not supported!
+#endif
+{
+    PORT_OUT(LED_PORT) ^= LED;
+}
